@@ -61,7 +61,7 @@ def obtener_detalle_pagos_periodo(fecha_inicio, fecha_fin, conexion):
         print("[DB] Obteniendo detalle de pagos del período...")
         query = """
             SELECT p.id AS ID_Pago, p.fecha_pago AS Fecha_Pago, p.monto AS Monto_Pago,
-                   p.diario AS Diario, p.id_cliente AS ID_Cliente, c.nombre AS Nombre_Cliente
+                p.diario AS Diario, p.id_cliente AS ID_Cliente, c.nombre AS Nombre_Cliente
             FROM pagos p LEFT JOIN clientes c ON p.id_cliente = c.id
             WHERE p.fecha_pago BETWEEN %s AND %s ORDER BY p.fecha_pago ASC, p.id ASC;
         """
@@ -74,11 +74,11 @@ def obtener_detalle_pagos_periodo(fecha_inicio, fecha_fin, conexion):
             df_pagos['Monto_Pago'] = pd.to_numeric(df_pagos['Monto_Pago'], errors='coerce').fillna(0)
             total_monto = df_pagos['Monto_Pago'].sum()
             total_row = pd.DataFrame([{'ID_Pago': '', 'Fecha_Pago': '', 'Diario': '', 'ID_Cliente': '',
-                                       'Nombre_Cliente': 'TOTAL', 'Monto_Pago': total_monto}])
+                                    'Nombre_Cliente': 'TOTAL', 'Monto_Pago': total_monto}])
             total_row = total_row[df_pagos.columns]
             df_pagos = pd.concat([df_pagos, total_row], ignore_index=True)
             if 'Monto_Pago' in df_pagos.columns:
-                 df_pagos['Monto_Pago'] = df_pagos['Monto_Pago'].apply(lambda x: float(x) if isinstance(x, Decimal) else x).astype(float)
+                df_pagos['Monto_Pago'] = df_pagos['Monto_Pago'].apply(lambda x: float(x) if isinstance(x, Decimal) else x).astype(float)
     except Exception as e: print(f"\n--- ERROR AL OBTENER DETALLE DE PAGOS ---"); import traceback; traceback.print_exc()
     finally:
         if cursor:
@@ -156,7 +156,7 @@ def calcular_comisiones(fecha_inicio, fecha_fin):
         print(f"[DB] Obteniendo pagos comisionables entre {fecha_inicio.date()} y {fecha_fin.date()}...")
         query_pagos = """
             SELECT p.id, p.fecha_pago, p.monto AS monto_total_pago, p.id_cliente,
-                   p.diario, d.es_comisionable
+                p.diario, d.es_comisionable
             FROM pagos p JOIN diarios d ON p.diario = d.nombre
             WHERE p.fecha_pago BETWEEN %s AND %s AND d.es_comisionable = 1
             ORDER BY p.fecha_pago ASC;
@@ -177,7 +177,7 @@ def calcular_comisiones(fecha_inicio, fecha_fin):
         placeholders = ', '.join(['%s'] * len(ids_pagos_periodo))
         query_conciliaciones = f"""
             SELECT pc.id AS id_conciliacion, pc.id_pago, pc.id_factura, pc.monto_aplicado,
-                   pc.fecha_aplicacion, f.id_vendedor, f.num_factura, f.id_cliente AS id_cliente_factura
+                pc.fecha_aplicacion, f.id_vendedor, f.num_factura, f.id_cliente AS id_cliente_factura
             FROM pago_conciliados pc JOIN facturas f ON pc.id_factura = f.id
             WHERE pc.id_pago IN ({placeholders}) ORDER BY pc.id_factura, pc.fecha_aplicacion ASC;
         """
@@ -278,8 +278,8 @@ def calcular_comisiones(fecha_inicio, fecha_fin):
             df_resultados = pd.DataFrame(resultados_comision)
             cols_to_float = ['Monto Aplicado a Cuota', 'Comision Generada', 'Monto Total Pago', 'Monto Total Cuota', 'Porcentaje Comision']
             for col in cols_to_float:
-                 if col in df_resultados.columns: df_resultados[col] = df_resultados[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x).astype(float)
-            ids_vendedores = df_resultados['ID Vendedor'].dropna().unique(); ids_vendedores = [int(vid) for vid in ids_vendedores if str(vid).isdigit()]
+                if col in df_resultados.columns: df_resultados[col] = df_resultados[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x).astype(float)
+            ids_vendedores = df_resultados['ID Vendedor'].dropna().unique(); ids_vendedores = [int(vid) for vid in ids_vendedores] # if str(vid).isdigit()]
             ids_clientes = df_resultados['ID Cliente'].dropna().unique(); ids_clientes = [int(cid) for cid in ids_clientes if str(cid).isdigit()]
 
             mapa_vendedores = {}
@@ -290,6 +290,7 @@ def calcular_comisiones(fecha_inicio, fecha_fin):
                 try: print("[DB] Verificando conexión antes de obtener vendedores..."); conexion.ping(reconnect=True, attempts=3, delay=1)
                 except mysql.connector.Error as err: print(f"Error de conexión antes de obtener vendedores: {err}")
                 cursor.close(); cursor = conexion.cursor(**cursor_opts)
+                
                 print("[DB] Cursor recreado antes de obtener vendedores.")
                 try:
                     cursor.execute(query_vendedores, tuple(ids_vendedores)); vendedores_data = cursor.fetchall()
@@ -326,8 +327,8 @@ def calcular_comisiones(fecha_inicio, fecha_fin):
     except Exception as e: print(f"\n--- ERROR DURANTE EL PROCESO CÁLCULO COMISIONES ---"); import traceback; traceback.print_exc(); return pd.DataFrame()
     finally:
         if cursor:
-             try: cursor.close(); print("[DB] Cursor de cálculo de comisiones cerrado.")
-             except Exception as cur_err: print(f"Advertencia: Error al cerrar cursor cálculo: {cur_err}")
+            try: cursor.close(); print("[DB] Cursor de cálculo de comisiones cerrado.")
+            except Exception as cur_err: print(f"Advertencia: Error al cerrar cursor cálculo: {cur_err}")
         if conexion and conexion.is_connected(): conexion.close(); print("[DB] Conexión de cálculo cerrada.")
 
 # --- Ejecución del Script ---
